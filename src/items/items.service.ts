@@ -1,39 +1,42 @@
-import { Injectable } from '@nestjs/common';
-import { CreateItemDto } from './dto/create-item.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Model } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Item , ItemSchema } from './schemas/item.schema';
 
 @Injectable()
 export class ItemsService {
-    private items = [];
+    constructor(@InjectModel('Item') private readonly itemModel: Model<Item>) { }
 
-    findAll(): {
-        id: number;
-        name: string;
-        qty: number;
-        description: string;
-    }[] {
-        return this.items;
+    async findAll(): Promise<Item[]> {
+        const query = this.itemModel.find();
+        return await query.exec();
     };
 
-    findOne(id: string) {
-        return this.items.find(item => item.id === +id);
+    async findOne(id: string): Promise<Item> {
+        try {
+            const query =  this.itemModel.findOne({ _id: id });
+            const item =  await query.exec();
+            return item;
+        } catch (error) {
+            throw new NotFoundException('could not find product');
+        }
     }
 
-    createOne(body: CreateItemDto) {
-        this.items.push(body);
-        return 'success';
-
+    async createOne(body:Item) {
+        const doc = new this.itemModel(body);
+        await doc.save();
+        return doc;
     }
 
-    deleteOne(id: string | number) {
-        this.items = this.items.filter(item => item.id !== +id);
-        return this.items;
+    async deleteOne(id:string) {
+        const query = this.itemModel.findByIdAndDelete(id);
+        return await query.exec();
+        
     }
 
-    updateOne(updatedObj: CreateItemDto) {
-        this.items = this.items.filter(item => item.id !== +updatedObj.id);
-        this.items.push(updatedObj);
-        return this.items;
+    async updateOne(id,body) {
+        const query = this.itemModel.findByIdAndUpdate(id,body,{new:true});
+        return await query.exec();
     }
-
 
 }
